@@ -11,14 +11,20 @@ import org.apache.http.util.EntityUtils;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.SupportMapFragment;
  
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
@@ -35,7 +41,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 
 
-public class MainActivity extends Activity implements SensorEventListener, LocationListener {
+public class MainActivity extends Activity implements SensorEventListener, LocationListener, OnMarkerClickListener {
 	
 	// testing for compass
 	 
@@ -61,6 +67,26 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 	        // TODO Auto-generated method stub
 	    }
 	
+	    @Override
+	    public boolean onMarkerClick(final Marker marker){
+	    	marker.showInfoWindow();
+	    	Log.v("title: ",marker.getTitle());
+	    	Log.v("hc: ",Integer.toString(marker.hashCode()));
+	    	
+	    	AlertDialog.Builder builder = new AlertDialog.Builder(this);
+	        builder.setTitle("test");
+	        builder.setMessage("test");
+	        builder.setCancelable(true);
+	        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+	            public void onClick(DialogInterface dialog, int id) {
+	                //do things
+	            }
+	           });
+
+	        AlertDialog dlg = builder.create();
+	        dlg.show();
+	    	return true;
+	    }
 	
 	public void initSensor(){
 		Log.v("sensor","init");
@@ -133,7 +159,12 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 			return responseString;
 		}
 		 protected void onPostExecute(String result) {
-	         
+			 String[]coord = result.split(",");
+			 double cord1 = Double.parseDouble(coord[0]);
+			 double cord2 = Double.parseDouble(coord[1]);
+			 
+			 MarkerOptions marker = new MarkerOptions().position(new LatLng(cord1,cord2)).title("new POI").snippet("hello world");
+			 googleMap.addMarker(marker).showInfoWindow();
 	     }
 	}
  
@@ -159,43 +190,17 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
     private void initilizeMap() {
     	
         if (googleMap == null) {
-       
             googleMap = ((MapFragment) getFragmentManager().findFragmentById(
                     R.id.map)).getMap();
+			googleMap.setOnMarkerClickListener(this);
             googleMap.setMyLocationEnabled(true);
             googleMap.getUiSettings().setCompassEnabled(true);
-           /* 
-            LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
-            Criteria criteria = new Criteria();
-            String bestProvider = locationManager.getBestProvider(criteria, false);
-            Location location = locationManager.getLastKnownLocation(bestProvider);
-            Double lat = location.getLatitude();
-            Double lon = location.getLongitude();
-            
-            CameraPosition cameraPosition = new CameraPosition.Builder().target(
-                    new LatLng(lat, lon)).zoom(18).build();
-                   
-            googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
-            */
+          
             LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
             
-            // Creating a criteria object to retrieve provider
-            //Criteria criteria = new Criteria();
- 
-            // Getting the name of the best provider
-           // String provider = locationManager.getBestProvider(criteria, true);
- 
-            // Getting Current Location
-            //Location location = locationManager.getLastKnownLocation(provider);
-            //locationManager.requestLocationUpdates(provider, 1000, 1, this);
             locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 10, this);
             locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0,10, this);
-           /*
-            if(location!=null){
-                onLocationChanged(location);
-            }
-            
-            */
+          
             getLocations();
  
             // check if map is created successfully or not
