@@ -1,19 +1,22 @@
+
 package com.example.mapscanner;
  
 import java.io.IOException;
+import java.util.ArrayList;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONTokener;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener;
 import com.google.android.gms.maps.MapFragment;
-import com.google.android.gms.maps.SupportMapFragment;
  
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.CameraPosition;
@@ -23,7 +26,6 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -35,7 +37,6 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -51,6 +52,8 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 	private Sensor magSensor;
 	private Sensor accSensor;
 	private double latitude,longitude;
+	
+	ArrayList<String> markerInfoArray;
 	
 	 @Override
 	    public void onProviderDisabled(String provider) {
@@ -73,18 +76,26 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 	    	Log.v("title: ",marker.getTitle());
 	    	Log.v("hc: ",Integer.toString(marker.hashCode()));
 	    	
-	    	AlertDialog.Builder builder = new AlertDialog.Builder(this);
-	        builder.setTitle("test");
-	        builder.setMessage("test");
-	        builder.setCancelable(true);
-	        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-	            public void onClick(DialogInterface dialog, int id) {
-	                //do things
-	            }
-	           });
+	    	
+	    	for(String s : markerInfoArray){
+	    		String placeHash = s.split("/")[0];
+	    		if(marker.getTitle().equals(placeHash)){
+	    			String placeDetails = s.split("/")[2];
+	    			String placeName = s.split("/")[1];
+	    			AlertDialog.Builder builder = new AlertDialog.Builder(this);
+	    	        builder.setTitle(placeName);
+	    	        builder.setMessage(placeDetails);
+	    	        builder.setCancelable(true);
+	    	        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+	    	            public void onClick(DialogInterface dialog, int id) {
+	    	                //do things
+	    	            }
+	    	           });
 
-	        AlertDialog dlg = builder.create();
-	        dlg.show();
+	    	        AlertDialog dlg = builder.create();
+	    	        dlg.show();
+	    		}
+	    	}
 	    	return true;
 	    }
 	
@@ -145,7 +156,7 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 		@Override
 		protected String doInBackground(String... arg0) {
 			String responseString = "";
-			String url = "http://benappdev.com/others/test/getLocations.php";
+			String url = "http://192.168.1.2/~Ben/mapscanner/getLocations.php";
 			HttpResponse response = null;
 			try {
 			HttpClient client = new DefaultHttpClient();
@@ -159,12 +170,29 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 			return responseString;
 		}
 		 protected void onPostExecute(String result) {
-			 String[]coord = result.split(",");
-			 double cord1 = Double.parseDouble(coord[0]);
-			 double cord2 = Double.parseDouble(coord[1]);
-			 
-			 MarkerOptions marker = new MarkerOptions().position(new LatLng(cord1,cord2)).title("new POI").snippet("hello world");
-			 googleMap.addMarker(marker).showInfoWindow();
+			 Log.v("result",result);
+			 try {
+				JSONArray locationsArray = (JSONArray) new JSONTokener(result).nextValue();
+				Log.d("json",locationsArray.toString(4));
+				for(int i = 0 ; i < locationsArray.length() ; i++){
+					JSONObject locationObject = locationsArray.getJSONObject(i);
+					String placeName = locationObject.getString("placeName");
+					String placeCoord = locationObject.getString("placeCoord");
+					String placeTitle = locationObject.getString("placeTitle");
+					String placeSnippet = locationObject.getString("placeSnippet");
+					String placeDetails = locationObject.getString("placeDetails");
+					
+					double placeLat = Double.parseDouble(placeCoord.split(",")[0]);
+					double placeLon = Double.parseDouble(placeCoord.split(",")[1]);
+					
+					MarkerOptions marker = new MarkerOptions().position(new LatLng(placeLat,placeLon)).title(placeTitle).snippet(placeSnippet);
+					googleMap.addMarker(marker).showInfoWindow();
+					markerInfoArray.add(placeTitle+"/"+placeName+"/"+placeDetails);
+				}
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 	     }
 	}
  
@@ -172,6 +200,7 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        markerInfoArray = new ArrayList<String>();
         initSensor();
  
         try {
