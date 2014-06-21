@@ -8,8 +8,11 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.util.EntityUtils;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.SupportMapFragment;
  
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.model.CameraPosition;
@@ -28,16 +31,35 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Criteria;
 import android.location.Location;
+import android.location.LocationListener;
 import android.location.LocationManager;
 
 
-public class MainActivity extends Activity implements SensorEventListener {
+public class MainActivity extends Activity implements SensorEventListener, LocationListener {
 	
 	// testing for compass
-	
+	 
+    // Google Map
+    private GoogleMap googleMap;
 	private SensorManager mSensorManager;
 	private Sensor magSensor;
 	private Sensor accSensor;
+	private double latitude,longitude;
+	
+	 @Override
+	    public void onProviderDisabled(String provider) {
+	        // TODO Auto-generated method stub
+	    }
+	 
+	    @Override
+	    public void onProviderEnabled(String provider) {
+	        // TODO Auto-generated method stub
+	    }
+	 
+	    @Override
+	    public void onStatusChanged(String provider, int status, Bundle extras) {
+	        // TODO Auto-generated method stub
+	    }
 	
 	
 	public void initSensor(){
@@ -63,15 +85,30 @@ public class MainActivity extends Activity implements SensorEventListener {
 	        float orientation[] = new float[3];
 	        SensorManager.getOrientation(R, orientation);
 	        azimut = orientation[0]; // orientation contains: azimut, pitch and roll
-	        Log.v("orientation: ", Float.toString(azimut));
-	      }
+	       // Log.v("orientation",Float.toString(azimut));
+	        CameraPosition pos = CameraPosition.builder().target(new LatLng(latitude,longitude)).bearing((float)Math.toDegrees(azimut)).zoom(18).build();
+	        googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(pos));
+	        }
 	    }
 	  }
 	
+	public void onLocationChanged(Location location){
+		// Getting latitude of the current location
+        latitude = location.getLatitude();
+ 
+        // Getting longitude of the current location
+        longitude = location.getLongitude();
+ 
+        // Creating a LatLng object for the current location
+        LatLng latLng = new LatLng(latitude, longitude);
+ 
+        CameraPosition cameraPosition = new CameraPosition.Builder().target(
+                latLng).zoom(18).build();
+               
+        googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+ 	}
+	
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {  }
-	 
-    // Google Map
-    private GoogleMap googleMap;
     
     public void getLocations(){
 		new sendDataAsync().execute();
@@ -105,6 +142,7 @@ public class MainActivity extends Activity implements SensorEventListener {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         initSensor();
+ 
         try {
             // Loading map
             initilizeMap();
@@ -119,12 +157,14 @@ public class MainActivity extends Activity implements SensorEventListener {
      * function to load map. If map is not created it will create it for you
      * */
     private void initilizeMap() {
+    	
         if (googleMap == null) {
+       
             googleMap = ((MapFragment) getFragmentManager().findFragmentById(
                     R.id.map)).getMap();
             googleMap.setMyLocationEnabled(true);
             googleMap.getUiSettings().setCompassEnabled(true);
-            
+           /* 
             LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
             Criteria criteria = new Criteria();
             String bestProvider = locationManager.getBestProvider(criteria, false);
@@ -134,8 +174,28 @@ public class MainActivity extends Activity implements SensorEventListener {
             
             CameraPosition cameraPosition = new CameraPosition.Builder().target(
                     new LatLng(lat, lon)).zoom(18).build();
-     
+                   
             googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+            */
+            LocationManager locationManager = (LocationManager) getSystemService(LOCATION_SERVICE);
+            
+            // Creating a criteria object to retrieve provider
+            //Criteria criteria = new Criteria();
+ 
+            // Getting the name of the best provider
+           // String provider = locationManager.getBestProvider(criteria, true);
+ 
+            // Getting Current Location
+            //Location location = locationManager.getLastKnownLocation(provider);
+            //locationManager.requestLocationUpdates(provider, 1000, 1, this);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 10, this);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0,10, this);
+           /*
+            if(location!=null){
+                onLocationChanged(location);
+            }
+            
+            */
             getLocations();
  
             // check if map is created successfully or not
@@ -145,6 +205,7 @@ public class MainActivity extends Activity implements SensorEventListener {
                         .show();
             }
         }
+      
     }
     
 
