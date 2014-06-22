@@ -19,7 +19,10 @@ import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener;
 import com.google.android.gms.maps.MapFragment;
 
 import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -193,7 +196,15 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 
 			locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 10, this);
 			locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0,10, this);
-
+			
+			//add overlay
+            BitmapDescriptor image = BitmapDescriptorFactory.fromAsset("image.jpg");
+            GroundOverlayOptions groundOverlay = new GroundOverlayOptions()
+            .image(image)
+            .position(new LatLng(1.341906,103.704439), 500f)
+            .transparency(0.5f);
+            googleMap.addGroundOverlay(groundOverlay);
+            
 			getLocations();
 
 			// check if map is created successfully or not
