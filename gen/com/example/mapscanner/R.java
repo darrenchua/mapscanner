@@ -407,8 +407,9 @@ containing a value of this type.
         public static final int powered_by_google_light=0x7f02001e;
     }
     public static final class id {
-        public static final int action_settings=0x7f060015;
+        public static final int action_settings=0x7f060018;
         public static final int book_now=0x7f060010;
+        public static final int btnNextScreen=0x7f060015;
         public static final int buyButton=0x7f06000a;
         public static final int buy_now=0x7f06000f;
         public static final int buy_with_google=0x7f06000e;
@@ -417,6 +418,8 @@ containing a value of this type.
         public static final int holo_dark=0x7f060005;
         public static final int holo_light=0x7f060006;
         public static final int hybrid=0x7f060004;
+        public static final int lblListHeader=0x7f060016;
+        public static final int lblListItem=0x7f060017;
         public static final int map=0x7f060014;
         public static final int match_parent=0x7f06000c;
         public static final int monochrome=0x7f060013;
@@ -436,6 +439,9 @@ containing a value of this type.
     public static final class layout {
         public static final int activity_main=0x7f030000;
         public static final int fragment_main=0x7f030001;
+        public static final int list_group=0x7f030002;
+        public static final int list_item=0x7f030003;
+        public static final int poi_view=0x7f030004;
     }
     public static final class menu {
         public static final int main=0x7f0a0000;
@@ -449,6 +455,7 @@ containing a value of this type.
         public static final int auth_client_play_services_err_notification_msg=0x7f040004;
         public static final int auth_client_requested_by_msg=0x7f040005;
         public static final int auth_client_using_bad_version_title=0x7f040000;
+        public static final int buttonName=0x7f040023;
         /**  Button in confirmation dialog to enable Google Play services.  Clicking it
         will direct user to application settings of Google Play services where they
         can enable it [CHAR LIMIT=40] 

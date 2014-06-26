@@ -19,23 +19,26 @@ import com.google.android.gms.maps.GoogleMap.OnMarkerClickListener;
 import com.google.android.gms.maps.MapFragment;
 
 import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.model.BitmapDescriptor;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
-import com.google.android.gms.maps.model.GroundOverlayOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -56,6 +59,7 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 	float[] mGravity;
 	float[] mGeomagnetic;
 	float azimut;
+	Polyline joinLine;
 
 	ArrayList<String> markerInfoArray; // {markerName/markerTitle/markerDetails}
 
@@ -101,7 +105,7 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 				builder.setTitle(placeName);
 				builder.setMessage(placeDetails);
 				builder.setCancelable(true);
-				builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+				builder.setPositiveButton("dismiss", new DialogInterface.OnClickListener() {
 					public void onClick(DialogInterface dialog, int id) {
 						//do things
 					}
@@ -128,7 +132,7 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 				float orientation[] = new float[3];
 				SensorManager.getOrientation(R, orientation);
 				azimut = orientation[0]; // orientation contains: azimut, pitch and roll
-				// Log.v("orientation",Float.toString(azimut));
+				//Log.v("orientation",Float.toString(azimut));
 				CameraPosition pos = CameraPosition.builder().target(new LatLng(latitude,longitude)).bearing((float)Math.toDegrees(azimut)).zoom(18).build();
 				googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(pos));
 			}
@@ -170,6 +174,18 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		
+		Button btnNextScreen = (Button) findViewById(R.id.btnNextScreen);
+		btnNextScreen.setOnClickListener(new View.OnClickListener() {
+			 
+            public void onClick(View arg0) {
+                //Starting a new Intent
+                Intent nextScreen = new Intent(getApplicationContext(), poiView.class);
+                startActivity(nextScreen);
+ 
+            }
+        });
+		
 		markerInfoArray = new ArrayList<String>();
 		initSensor();
 
@@ -198,12 +214,14 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 			locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0,10, this);
 			
 			//add overlay
+			/*
             BitmapDescriptor image = BitmapDescriptorFactory.fromAsset("image.jpg");
             GroundOverlayOptions groundOverlay = new GroundOverlayOptions()
             .image(image)
-            .position(new LatLng(1.341906,103.704439), 500f)
+            .position(new LatLng(1.298593,103.845909), 500f)
             .transparency(0.5f);
             googleMap.addGroundOverlay(groundOverlay);
+            */
             
 			getLocations();
 
@@ -226,7 +244,7 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 		@Override
 		protected String doInBackground(String... arg0) {
 			String responseString = "";
-			String url = "http://192.168.1.2/~Ben/mapscanner/getLocations.php";
+			String url = "http://192.168.1.2/~Ben/mapscanner/getLocations.php"; // add loc coords
 			HttpResponse response = null;
 			try {
 				HttpClient client = new DefaultHttpClient();
@@ -244,6 +262,9 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 			try {
 				JSONArray locationsArray = (JSONArray) new JSONTokener(result).nextValue();
 				Log.d("json",locationsArray.toString(4));
+				LatLng closestPlace = new LatLng(1,1);
+				double closestBearing = 100;
+				boolean gotPlace = false;
 				for(int i = 0 ; i < locationsArray.length() ; i++){
 					JSONObject locationObject = locationsArray.getJSONObject(i);
 					String placeName = locationObject.getString("placeName");
@@ -254,6 +275,18 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 
 					double placeLat = Double.parseDouble(placeCoord.split(",")[0]);
 					double placeLon = Double.parseDouble(placeCoord.split(",")[1]);
+					
+					double currentBearing = Math.atan((latitude-placeLat)/(longitude/placeLon));
+					if(currentBearing < closestBearing){
+						closestBearing = currentBearing;
+						closestPlace = new LatLng(placeLat,placeLon);
+						gotPlace = true;
+					}
+					
+					if(gotPlace){
+						joinLine = googleMap.addPolyline(new PolylineOptions()
+						.add(new LatLng(latitude,longitude),closestPlace).width(5).color(Color.RED));
+					}
 
 					MarkerOptions marker = new MarkerOptions().position(new LatLng(placeLat,placeLon)).title(placeTitle).snippet(placeSnippet);
 					googleMap.addMarker(marker).showInfoWindow();

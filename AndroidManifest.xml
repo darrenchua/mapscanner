@@ -38,6 +38,9 @@
             </intent-filter>
         </activity>
         
+        <activity android:name=".poiView"></activity>
+        
+        
         <!-- Goolge Maps API Key -->
 <meta-data
      android:name="com.google.android.maps.v2.API_KEY"

@@ -4,5 +4,6 @@
     <string name="app_name">mapscanner</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    <string name="buttonName">POI View</string>
 
 </resources>
