@@ -1,0 +1,129 @@
+<html>
+<head>
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+  <style type="text/css">
+  html { height: 100% }
+  body { height: 100%; margin: 10px; padding: 0 }
+  #map-canvas { 
+    width: 800px;
+    height: 600px;
+    position: absolute;
+    margin-left: -400px;
+    top: 10px;
+    left: 50%;
+  }
+  </style>
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAVlZvTJOXZ2vyke0U2f1B1yT_sf9WVwOs"> </script>
+  <script type="text/javascript" src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+  <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?libraries=places"></script>
+  <script type="text/javascript">
+  var map;
+  function initialize() {
+    map = new google.maps.Map(document.getElementById("map-canvas"));
+  }
+  google.maps.event.addDomListener(window, 'load', initialize);
+
+  function getLocation() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(showPosition);
+    }
+  }
+  function showPosition(position) {
+    console.log("Latitude: " + position.coords.latitude + "Longitude: " + position.coords.longitude); 
+    var newCenter = new google.maps.LatLng(position.coords.latitude,position.coords.longitude);
+    map.panTo(newCenter);
+    map.setZoom(16);
+  }
+
+  $(document).ready(function(){
+    getLocation();
+    $("#searchPlace").keypress(function(e){
+      if(e.which == 13){
+        var searchString = $(this).val();
+        var request = {
+          query:searchString
+        }
+        var service = new google.maps.places.PlacesService(map);
+        service.textSearch(request,callback);
+      }
+    });
+    $("#sendData").click(function(){
+      var locData = {placeName:$("#placeName").val(),placeDetails:$("#placeDetails").val(),placeCoord:$("#lat").val()+","+$("#lng").val(),placeType:$("#placeType").val()};
+      console.log(locData);
+      $.ajax({
+        url:"sendData.php",
+        data:locData,
+        success:function(){
+          alert("Success");
+          window.location.reload();
+        }
+      });
+    });
+  });
+
+  function callback(results,status){
+    if (status == google.maps.places.PlacesServiceStatus.OK) {
+      console.log(results);
+      for (var i = 0; i < results.length; i++) {
+        var place = results[i];
+        createMarker(results[i])
+      }
+    }
+  }
+
+  var markersArray = new Array();
+
+  function createMarker(markerData){
+    console.log(markerData.name);
+    var marker = new google.maps.Marker({
+      position:markerData.geometry.location,
+      map:map,
+      draggable:true,
+      title:markerData.name
+    });
+    marker.setMap(map);
+    markersArray.push(marker);
+    google.maps.event.addListener(marker,'click',clickCallback);
+    google.maps.event.addListener(marker,'drag',dragCallback);
+  }
+
+  function dragCallback(){
+    console.log($(this).get(0).title);
+
+    for(var i = 0 ; i < markersArray.length ; i++){
+      if(markersArray[i].title != $(this).get(0).title){
+        markersArray[i].setMap(null);
+      }
+    }
+
+    markersArray = new Array();
+    markersArray.push($(this).get(0));
+
+    var lat = $(this).get(0).position.k;
+    var lng = $(this).get(0).position.A;
+    $("#lat").val(lat);
+    $("#lng").val(lng);
+  }
+
+  function clickCallback(){
+    var infowindow = new google.maps.InfoWindow({
+      content: $(this).get(0).title
+    });
+    infowindow.open(map,$(this).get(0));
+  }
+  </script>
+</head>
+<body>
+  <div id="map-canvas"/></div><br>
+  Search <input id="searchPlace"/><br><br>
+  Latitude: <input readonly id="lat"/><br>
+  Longitude: <input readonly id="lng"/><br><br>
+  Place Name: <input id="placeName"/><br><br>
+  Place Details: <input id="placeDetails"/><br><br>
+  <select id="placeType">
+    <option value='transport'>Transport</option>
+    <option value='commercial'>Commercial</option>
+  </select><br><br>
+  <button id="sendData">Submit</button>
+</body>
+</html>

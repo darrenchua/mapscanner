@@ -15,14 +15,31 @@ import org.json.JSONTokener;
 
 
 import android.app.ListActivity;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.ListView;
 
 public class poiView extends ListActivity{
     ArrayList<String> listItems=new ArrayList<String>();
     ArrayAdapter<String> adapter;
+    ArrayList<ArrayList<String>> poiArray = new ArrayList<ArrayList<String>>();
+    
+    protected void onListItemClick(ListView list, View view, int position, long id) {
+        super.onListItemClick(list, view, position, id);
+        String selectedPOI = (String)getListAdapter().getItem(position);
+        for(int i = 0 ; i < poiArray.size() ; i++){
+        	if(selectedPOI.equals(poiArray.get(i).get(0))){
+        		Intent detailsScreen = new Intent(getApplicationContext(),detailsView.class);
+        		detailsScreen.putExtra("placeDetails",poiArray.get(i).get(4));
+        		detailsScreen.putExtra("placeTitle",poiArray.get(i).get(1));
+        		startActivity(detailsScreen);
+        	}
+        }
+    }
 	
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -31,19 +48,21 @@ public class poiView extends ListActivity{
 	            android.R.layout.simple_list_item_1,
 	            listItems);
 	        setListAdapter(adapter);	
-	        getLocations();
+	        Intent i = getIntent();
+	        String locationCoords = i.getStringExtra("locationCoords");
+	        getLocations(locationCoords);
 	}
 
-	public void getLocations(){
-		new sendDataAsync().execute();
+	public void getLocations(String locationCoords){
+		new sendDataAsync().execute(locationCoords);
 	}
 
 	private class sendDataAsync extends AsyncTask<String, Integer, String>{
 
 		@Override
-		protected String doInBackground(String... arg0) {
+		protected String doInBackground(String...arg0) {
 			String responseString = "";
-			String url = "http://192.168.1.2/~Ben/mapscanner/getLocations.php"; // add loc coords
+			String url = "http://192.168.1.2/~Ben/mapscanner/getLocations.php"+arg0[0]; // add loc coords
 			HttpResponse response = null;
 			try {
 				HttpClient client = new DefaultHttpClient();
@@ -63,6 +82,14 @@ public class poiView extends ListActivity{
 				for(int i = 0 ; i < locationsArray.length() ; i++){
 					JSONObject poiObject = locationsArray.getJSONObject(i);
 					listItems.add(poiObject.getString("placeName"));
+					
+					ArrayList<String> poiInfo = new ArrayList<String>();
+					poiInfo.add(poiObject.getString("placeName"));
+					poiInfo.add(poiObject.getString("placeTitle"));
+					poiInfo.add(poiObject.getString("placeCoord"));
+					poiInfo.add(poiObject.getString("placeSnippet"));
+					poiInfo.add(poiObject.getString("placeDetails"));
+					poiArray.add(poiInfo);
 				}
 				adapter.notifyDataSetChanged();
 			} catch (JSONException e) {

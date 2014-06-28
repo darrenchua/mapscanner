@@ -39,6 +39,7 @@
         </activity>
         
         <activity android:name=".poiView"></activity>
+        <activity android:name=".detailsView"></activity>
         
         
         <!-- Goolge Maps API Key -->

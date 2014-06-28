@@ -27,8 +27,6 @@ import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -59,6 +57,7 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 	float[] mGravity;
 	float[] mGeomagnetic;
 	float azimut;
+	ArrayList<LatLng> allLocations = new ArrayList<LatLng>();
 	Polyline joinLine;
 
 	ArrayList<String> markerInfoArray; // {markerName/markerTitle/markerDetails}
@@ -80,14 +79,14 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 	public void onStatusChanged(String provider, int status, Bundle extras) {
 		// TODO Auto-generated method stub
 	}
-	
+
 	public void onAccuracyChanged(Sensor sensor, int accuracy) {  }
 
-	
+
 	/*
 	 *  Event Listeners
 	 */
-	
+
 	// listen for marker click
 	@Override
 	public boolean onMarkerClick(final Marker marker){
@@ -101,6 +100,7 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 			if(marker.getTitle().equals(placeHash)){
 				String placeDetails = s.split("/")[2];
 				String placeName = s.split("/")[1];
+				/*
 				AlertDialog.Builder builder = new AlertDialog.Builder(this);
 				builder.setTitle(placeName);
 				builder.setMessage(placeDetails);
@@ -113,11 +113,26 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 
 				AlertDialog dlg = builder.create();
 				dlg.show();
+				 */
+				Intent detailsScreen = new Intent(getApplicationContext(),detailsView.class);
+				detailsScreen.putExtra("placeDetails",placeDetails);
+				detailsScreen.putExtra("placeTitle",placeName);
+				startActivity(detailsScreen);
 			}
 		}
 		return true;
 	}
-	
+
+	public double calcBearing(LatLng from, LatLng to){
+
+		double dLon = (to.longitude - from.longitude);
+		double y = Math.sin(dLon)*Math.cos(to.latitude);
+		double x = Math.cos(from.latitude)*Math.sin(to.latitude) - Math.sin(from.latitude)*Math.cos(to.latitude)*Math.cos(dLon);
+		double bearing = Math.atan2(y, x);
+
+		return bearing;
+	}
+
 	// listen for compass change event
 	public void onSensorChanged(SensorEvent event) {
 		if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER)
@@ -135,10 +150,39 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 				//Log.v("orientation",Float.toString(azimut));
 				CameraPosition pos = CameraPosition.builder().target(new LatLng(latitude,longitude)).bearing((float)Math.toDegrees(azimut)).zoom(18).build();
 				googleMap.moveCamera(CameraUpdateFactory.newCameraPosition(pos));
+				
+				drawPolyLine();
 			}
 		}
 	}
 	
+	public void drawPolyLine(){
+		// this function will draw the polyline
+		LatLng myLocation = new LatLng(latitude,longitude);
+		LatLng pointedLocation = new LatLng(latitude,longitude);
+		double closestBearing = 9999; // sentinel value
+		for(int i = 0 ; i < allLocations.size() ; i++){
+			double currentBearing = calcBearing(myLocation,allLocations.get(i));
+			Log.v("currentBearing",Double.toString(currentBearing));
+			Log.v("azimut",Float.toString(azimut));
+			if(Math.abs((currentBearing-azimut)%3.14) < closestBearing){
+				closestBearing = Math.abs(currentBearing-azimut);
+				pointedLocation = new LatLng(allLocations.get(i).latitude,allLocations.get(i).longitude);
+			}
+			Log.v("closestBearing",Double.toString(closestBearing));
+		}
+		if(joinLine != null){
+			ArrayList<LatLng>points = new ArrayList<LatLng>();
+			points.add(new LatLng(latitude,longitude));
+			points.add(pointedLocation);
+			joinLine.setPoints(points);
+		}
+		else{
+			joinLine = googleMap.addPolyline(new PolylineOptions()
+			.add(new LatLng(latitude,longitude),pointedLocation).width(5).color(Color.RED));
+		}
+	}
+
 	// listen for when GPS coord change
 	public void onLocationChanged(Location location){
 		// Getting latitude of the current location
@@ -154,8 +198,9 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 				latLng).zoom(18).build();
 
 		googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+		drawPolyLine();
 	}
-	
+
 	/*
 	 * Initialization methods
 	 */
@@ -165,27 +210,28 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 		magSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 		accSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 	}
-	
+
 	/*
 	 * Networking methods
 	 */
-	
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
-		
+
 		Button btnNextScreen = (Button) findViewById(R.id.btnNextScreen);
 		btnNextScreen.setOnClickListener(new View.OnClickListener() {
-			 
-            public void onClick(View arg0) {
-                //Starting a new Intent
-                Intent nextScreen = new Intent(getApplicationContext(), poiView.class);
-                startActivity(nextScreen);
- 
-            }
-        });
-		
+
+			public void onClick(View arg0) {
+				//Starting a new Intent
+				Intent nextScreen = new Intent(getApplicationContext(), poiView.class);
+				nextScreen.putExtra("locationCoords", "?locationCoords="+Double.toString(latitude)+","+Double.toString(longitude));
+				startActivity(nextScreen);
+
+			}
+		});
+
 		markerInfoArray = new ArrayList<String>();
 		initSensor();
 
@@ -198,7 +244,7 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 		}
 
 	}
-	
+
 	private void initilizeMap() {
 
 		if (googleMap == null) {
@@ -212,17 +258,7 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 
 			locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 10, this);
 			locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0,10, this);
-			
-			//add overlay
-			/*
-            BitmapDescriptor image = BitmapDescriptorFactory.fromAsset("image.jpg");
-            GroundOverlayOptions groundOverlay = new GroundOverlayOptions()
-            .image(image)
-            .position(new LatLng(1.298593,103.845909), 500f)
-            .transparency(0.5f);
-            googleMap.addGroundOverlay(groundOverlay);
-            */
-            
+
 			getLocations();
 
 			// check if map is created successfully or not
@@ -244,7 +280,7 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 		@Override
 		protected String doInBackground(String... arg0) {
 			String responseString = "";
-			String url = "http://192.168.1.2/~Ben/mapscanner/getLocations.php"; // add loc coords
+			String url = "http://192.168.1.2/~Ben/mapscanner/getLocations.php?locationCoords="+Double.toString(latitude)+","+Double.toString(longitude); // add loc coords
 			HttpResponse response = null;
 			try {
 				HttpClient client = new DefaultHttpClient();
@@ -262,9 +298,11 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 			try {
 				JSONArray locationsArray = (JSONArray) new JSONTokener(result).nextValue();
 				Log.d("json",locationsArray.toString(4));
+				/*
 				LatLng closestPlace = new LatLng(1,1);
 				double closestBearing = 100;
 				boolean gotPlace = false;
+				 */
 				for(int i = 0 ; i < locationsArray.length() ; i++){
 					JSONObject locationObject = locationsArray.getJSONObject(i);
 					String placeName = locationObject.getString("placeName");
@@ -275,19 +313,22 @@ public class MainActivity extends Activity implements SensorEventListener, Locat
 
 					double placeLat = Double.parseDouble(placeCoord.split(",")[0]);
 					double placeLon = Double.parseDouble(placeCoord.split(",")[1]);
-					
+
+					allLocations.add(new LatLng(placeLat,placeLon));
+
+					/*
 					double currentBearing = Math.atan((latitude-placeLat)/(longitude/placeLon));
 					if(currentBearing < closestBearing){
 						closestBearing = currentBearing;
 						closestPlace = new LatLng(placeLat,placeLon);
 						gotPlace = true;
 					}
-					
+
 					if(gotPlace){
 						joinLine = googleMap.addPolyline(new PolylineOptions()
 						.add(new LatLng(latitude,longitude),closestPlace).width(5).color(Color.RED));
 					}
-
+					 */
 					MarkerOptions marker = new MarkerOptions().position(new LatLng(placeLat,placeLon)).title(placeTitle).snippet(placeSnippet);
 					googleMap.addMarker(marker).showInfoWindow();
 					markerInfoArray.add(placeTitle+"/"+placeName+"/"+placeDetails);
